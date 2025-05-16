@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Iterable, Hashable
+from typing import Dict, Tuple, Iterable, Hashable, FrozenSet
 from copy import deepcopy, copy
 from graphviz import Digraph
 from collections import deque
@@ -14,12 +14,30 @@ class DFA:
                  delta: Dict[Tuple[State, Event], State],
                  finals: frozenset[State] = frozenset()):
         # Salva i dati
+        self._consistency(states, alphabet, initial, delta, finals)
         self.states = states
         self.alphabet = alphabet
         self.initial = initial
         self.delta = delta
         self.finals = finals
-        
+
+
+    def _consistency(self, states: frozenset[State], alphabet: frozenset[Event], initial: State, delta: Dict[Tuple[State, Event], State], finals: frozenset[State] = frozenset()):
+        # Controlla che tutti gli stati siano validi
+        if not states:
+            raise ValueError("States set is empty")
+        if initial not in states:
+            raise ValueError("Initial state is not in states")
+        if not finals.issubset(states):
+            raise ValueError("Final states must be a subset of states")
+        for (s, e), nxt in delta.items():
+            if s not in states:
+                raise ValueError(f"State {s} is not in states")
+            if e not in alphabet:
+                raise ValueError(f"Event {e} is not in alphabet")
+            if nxt not in states:
+                raise ValueError(f"Next state {nxt} is not in states")
+            
     
     # Metodo: data una stato e un evento, restituisci il nuovo stato
     def step(self, s: State, e: Event) -> State:
