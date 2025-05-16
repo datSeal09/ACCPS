@@ -1,4 +1,4 @@
-Metadata-Version: 2.4
+Metadata-Version: 2.1
 Name: LibACCPS
 Version: 1.0.0
 Summary: Library for modeling and analyzing discrete automata, observers, and supervisor optimization
@@ -11,10 +11,3 @@ Classifier: Operating System :: OS Independent
 Requires-Python: >=3.8
 Requires-Dist: networkx
 Requires-Dist: graphviz
-Dynamic: author
-Dynamic: author-email
-Dynamic: classifier
-Dynamic: home-page
-Dynamic: requires-dist
-Dynamic: requires-python
-Dynamic: summary
