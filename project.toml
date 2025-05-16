@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]   # >=64 abilita PEP 660
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "LibACCPS"
+version = "1.0.1"
+description = "Library for modelling and analysing discrete-event automata"
+authors = [{name = "Andrea Matticola", email = "you@example.com"}]
+dependencies = ["networkx", "graphviz"]
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
