@@ -725,7 +725,7 @@ def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
         return False
 
 
-    def compute_idk2(g:DFA, R_p, e_obs, e_era, e_ins):
+    def compute_g2(g:DFA, R_p, e_obs, e_era, e_ins):
         R = deepcopy(g.states)
         R_m_Rp = R - R_p
 
@@ -756,21 +756,29 @@ def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
     R_in =  g.states-set(forbidden_states)
     R_out=set()
     #print("Iterazione", 1)
-    R_out, R_preempt = compute_idk2(g, R_in, e_obs, e_era, e_ins)
+    R_out, R_preempt = compute_g2(g, R_in, e_obs, e_era, e_ins)
     i = 2
 
     while R_out != R_in:
         #print("Iterazione", i)
         R_in = R_out
-        R_out, R_preempt = compute_idk2(g, R_in, e_obs, e_era, e_ins)
+        R_out, R_preempt = compute_g2(g, R_in, e_obs, e_era, e_ins)
         i += 1
     
     delta={}
     for (s,e) , step in g.delta.items():
         if s in R_out and step in R_out:
             delta[(s,e)]=g.delta[(s,e)]
+    
     R_out=Reach(delta, g.initial, g.alphabet, DFA=True)
     R_preempt=set(R_preempt) & set(R_out)
+
+    delta={}
+    for (s,e) , step in g.delta.items():
+        if s in R_out and step in R_out:
+            delta[(s,e)]=g.delta[(s,e)]
+    
+    
     trimmed=DFA(
         states=fz(R_out),
         alphabet=g.alphabet,
