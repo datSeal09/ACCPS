@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "LibACCPS"
 version = "1.0.1"
 description = "Library for modelling and analysing discrete-event automata"
-authors = [{name = "Andrea Matticola", email = "you@example.com"}]
+authors = [{name = "Enrico Mattana, Andrea Matticola", email = "you@example.com"}]
 dependencies = ["networkx", "graphviz"]
 readme = "README.md"
 requires-python = ">=3.8"
