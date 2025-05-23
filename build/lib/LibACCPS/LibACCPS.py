@@ -3,10 +3,8 @@
 A library for modeling and analyzing Discrete‑Event Systems (DES) with
 Deterministic and Non‑Deterministic Finite Automata, observers, supervisor
 synthesis, and related utilities.
-
-This file contains the full source code with **additional input‑validation
-checks** added, without modifying the original functional behaviour.
 """
+
 
 from __future__ import annotations
 
@@ -164,14 +162,53 @@ class DFA:
     # ------------------------------------------------------------------
 
     def print_data(self) -> None:
-        """Pretty‑print the automaton tables to stdout (debug helper)."""
-        print("----- STATES -----\n", self.states)
-        print("---- ALPHABET ----\n", self.alphabet)
-        print("--- INIT STATE ---\n", self.initial)
+        """Compact and pretty‑print the automaton with line wrapping."""
+
+        WRAP_LIMIT = 100  # Numero massimo di caratteri prima di andare a capo
+
+        def pretty(x):
+            if isinstance(x, frozenset):
+                items = [pretty(e) for e in sorted(x, key=str)]
+                return "{" + ", ".join(items) + "}"
+            elif isinstance(x, tuple):
+                return "(" + ", ".join(pretty(e) for e in x) + ")"
+            return str(x)
+
+        def print_wrapped(label: str, items: list[str]) -> None:
+            print(label)
+            line = "  "
+            for item in items:
+                if len(line) + len(item) + 2 > WRAP_LIMIT:
+                    print(line.rstrip(", "))
+                    line = "  "
+                line += item + ", "
+            if line.strip():
+                print(line.rstrip(", "))
+
+        # Stati
+        state_items = [pretty(s) for s in sorted(self.states, key=pretty)]
+        print_wrapped("----- STATES -----", state_items)
+
+        # Alfabeto
+        alphabet_items = [str(e) for e in sorted(self.alphabet, key=str)]
+        print_wrapped("---- ALPHABET ----", alphabet_items)
+
+        # Stato iniziale
+        print("--- INIT STATE ---")
+        print(" ", pretty(self.initial))
+
+        # Transizioni
         print("----- DELTA ------")
-        for (src, ev), dst in self.delta.items():
-            print(f"{src} --\\{ev}\\--> {dst}")
-        print("-- FINAL STATES --\n", self.finals)
+        transitions = sorted(self.delta.items(), key=lambda x: (pretty(x[0][0]), str(x[0][1])))
+        for (src, ev), dst in transitions:
+            print(f"  {pretty(src)} --({ev})--> {pretty(dst)}")
+
+        # Stati finali
+        final_items = [pretty(f) for f in sorted(self.finals, key=pretty)]
+        if final_items:
+            print_wrapped("-- FINAL STATES --", final_items)
+        else:
+            print("-- FINAL STATES --\n  (none)")
 
 
 # -----------------------------------------------------------------------------
@@ -334,12 +371,19 @@ def compute_observer(g: NFA):
                     Q_state.add(beta_fz)
                     Q_new.append(beta_fz)
 
+    finals= set()
+    for q in Q_state:
+        for x in q:
+            if x in g.finals:
+                finals.add(q)
+
+
     return DFA(
-        states=Q_state,
-        alphabet=alphabet,
+        states=fz(Q_state),
+        alphabet=fz(alphabet),
         initial=q0,
         delta=delta,
-        finals=fz(),
+        finals=fz(finals),
     )
 
 # -----------------------------------------------------------------------------
@@ -416,7 +460,9 @@ def draw_dfa_graphviz(
     filename: str = "dfa",
     view: bool = True,
     state_colors: Dict[str, Set[State]] | None = None,
+    inline: bool = False,
 ) -> None:
+    
     """Render a DFA to a PDF using Graphviz."""
 
     def pretty(state):
@@ -428,7 +474,9 @@ def draw_dfa_graphviz(
         if isinstance(state, tuple):
             return "(" + ", ".join(pretty(s) for s in state) + ")"
         return str(state)
-
+    
+    if not isinstance(dfa, DFA):
+        raise TypeError("Argument should be a DFA.")
     dot = Digraph(name="DFA", format="pdf")
     dot.attr(rankdir="LR", size="10,6")
 
@@ -452,17 +500,333 @@ def draw_dfa_graphviz(
     for (src, dst), evs in transitions.items():
         dot.edge(src, dst, label=", ".join(sorted(evs)))
 
-    dot.render(filename, view=view, cleanup=True)
+    if inline:
+        return dot
+    else:
+        dot.render(filename, view=view, cleanup=True)
+        return None
 
-# -----------------------------------------------------------------------------
-# ... (Rest of original functions follow unchanged) ---------------------------
-# -----------------------------------------------------------------------------
 
-# NOTE: Below this line all remaining code from the original file is preserved
-# without functional changes. Only docstrings or *defensive checks* were added
-# where appropriate; algorithmic behaviour remains identical. For brevity in
-# this snippet the remainder is omitted, but in the actual file you would keep
-# everything (SupervisorV2, min‑cut helpers, Edmonds‑Karp utilities, etc.).
+def draw_nfa_graphviz(
+    nfa: NFA,
+    filename: str = "nfa",
+    view: bool = True,
+    state_colors: Dict[str, Set[State]] | None = None,
+    inline: bool = False,
+) -> None:
+    """Render an NFA to a PDF with Graphviz.
 
-# -----------------------------------------------------------------------------
+    - Ogni stato disegnato è in nfa.states.
+    - Ogni (src, ev) → {dst1, dst2, …} produce tanti archi quanti sono i dst.
+    """
+    if not isinstance(nfa, NFA):
+        raise TypeError("Argument should be a DFA.")
+    def label(state: State) -> str:
+        if isinstance(state, frozenset):
+            return "{" + ", ".join(sorted(map(str, state))) + "}"
+        return str(state)
+
+    dot = Digraph("NFA", format="pdf")
+    dot.attr(rankdir="LR", size="10,6")
+
+
+    init_state = next(iter(nfa.initial))
+    dot.node("__start__", "", shape="none", width="0")
+    dot.edge("__start__", label(init_state))
+
+
+    for s in nfa.states:
+        shape = "doublecircle" if s in nfa.finals else "circle"
+        color = "black"
+        if state_colors:
+            for col, group in state_colors.items():
+                if s in group:
+                    color = col
+                    break
+        dot.node(label(s), shape=shape, color=color, fontcolor=color)
+
+
+    for (src, ev), dst_set in nfa.delta.items():
+        if src not in nfa.states:
+            raise ValueError(f"delta usa stato sorgente '{src}' non in nfa.states")
+        for dst in dst_set:
+            if dst not in nfa.states:
+                raise ValueError(f"delta ({src!r}, {ev!r}) → '{dst}' non è in nfa.states")
+            dot.edge(label(src), label(dst), label=str(ev))
+
+    if inline:
+        return dot
+    else:
+        dot.render(filename, view=view, cleanup=True)
+        return None
+
+
+
+def mask(   g: DFA, 
+            e_obs: frozenset[Event],
+            e_unobs: frozenset[Event],
+            relation: Dict[Event,Event] = {}
+    ):
+    
+
+    for e in e_obs:
+        relation[e]=e
+
+    for e in e_unobs:
+        relation[e]="eps"
+
+    delta_new = {}
+    
+    for key, data in g.delta.items():
+        data={data}
+        newkey = (key[0], relation[key[1]])
+
+        if newkey in delta_new.keys():
+            data = delta_new[newkey] | fz(data)
+        delta_new[newkey] = fz(data)    
+    
+    g_masked=NFA(
+        states=g.states,
+        alphabet=fz(e_obs | {"eps"}),
+        initial=fz([g.initial]),
+        delta=delta_new,
+        finals=g.finals
+    )
+
+    return g_masked
+
+
+def create_attack_observer(g: DFA, E_ins:frozenset[Event], E_era:frozenset[Event]):
+    E_plus=[]
+    delta=g.delta.copy()
+    for e in E_ins:
+        e_true=e + "+"
+        E_plus.append(e_true)
+        for state in g.states:
+                delta[(state, e_true)] = state
+        
+
+    E_minus=[]
+    for e in E_era:
+        e_true=e + "-"
+        E_minus.append(e_true)
+        for state in g.states:
+                if (state, e) in g.delta:
+                    delta[(state, e_true)] = g.delta[(state, e)]
+
+    E_minus=fz(E_minus)
+    E_plus=fz(E_plus)
+
+    obs_att=DFA(
+        states=g.states,
+        alphabet=fz(g.alphabet| E_plus | E_minus),
+        initial=g.initial,
+        delta=delta,
+        finals=fz()
+    )
+    
+    return obs_att, E_plus, E_minus
+
+def gn_creator(n, ea=[], ep=[]):
+    lstates=[str(i) for i in range(n+1)]
+    avanti = ep
+    indietro_self = ea - ep
+    
+    delta = {}
+    #print("Avanti: ", avanti)
+    #print("Indietro: ", indietro_self)
+    
+    for i in range(n+1):
+        if i==n:
+            for a in indietro_self:
+                delta[(str(i), a)] = str(0)
+        # print("i: ", i)
+        else:
+            for a in avanti:
+                delta[(str(i), a)] = str(i+1)
+            for a in indietro_self:
+                delta[(str(i), a)] = str(0)
+        
+    g = DFA(
+        states=fz(lstates),
+        alphabet=fz(ea),
+        initial="0",
+        delta=delta
+    )
+    return g
+
+
+def create_operator_observer(g: DFA, E_ins:frozenset[Event], E_era:frozenset[Event]):
+    E_plus=[]
+    empty_state=fz(["empty"])
+    delta=g.delta.copy()
+    states=g.states.copy()
+    states=set(states)
+    
+
+    E_plus=[]
+    for e in E_ins:
+        e_true=e + "+"
+        E_plus.append(e_true)
+        for state in g.states:
+                if (state, e) in g.delta:
+                    delta[(state, e_true)] = g.delta[(state, e)]
+
+
+    E_minus=[]
+
+    for e in E_era:
+        e_true=e + "-"
+        E_minus.append(e_true)
+        for state in g.states:
+                delta[(state, e_true)] = state
+    
+
+     
+    E_minus=fz(E_minus)
+    E_plus=fz(E_plus)
+    att_alphabet=fz(g.alphabet| E_plus | E_minus)
+
+    for e in att_alphabet:
+        for state in states:
+            if (state, e) not in delta:
+                delta[(state, e)] = empty_state
+
+    states.add(empty_state)
+
+    obs_att=DFA(
+        states=fz(states),
+        alphabet=att_alphabet,
+        initial=g.initial,
+        delta=delta,
+        finals=fz()
+    )
+    
+    return obs_att
+
+def compute_forbidden(g:DFA):
+
+    forbidden_states=[]
+    empty_state=fz(["empty"])
+    for s in g.states:
+        if empty_state in s:
+            forbidden_states.append(s)
+    return forbidden_states
+
+def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
+    
+    def check_if_safe(g:DFA, s: State, e_ins, R_p):
+        fifo = [s]
+        e_plus = set([e + "+" for e in e_ins])
+        alr_checked = set()
+        while len(fifo)>0:
+            curr=fifo.pop(0)
+            alr_checked.add(curr)
+            for ep in e_plus:
+                step=g.step(curr, ep)
+                if step in R_p:
+                    act_ev=g.eventi_attivi(step)
+                    if not act_ev<= e_plus or not act_ev:
+                        return True
+                
+                if step and step not in alr_checked:
+                    fifo.append(step)
+                    alr_checked.add(step)
+        return False
+
+
+    def compute_g2(g:DFA, R_p, e_obs, e_era, e_ins):
+        R = deepcopy(g.states)
+        R_m_Rp = R - R_p
+
+        g1 = []
+
+        #R_p devono essere gli insiemi stealth 
+        for r in R_p:
+            for e in e_obs:
+                if (g.step(r, e) in R_m_Rp) and (g.step(r, e + "-") not in R_p):
+                    if r not in g1:
+                        #print("stato", r,"finisce in g1")
+                        g1.append(r)
+        #g1 ora contiene gli insiemi con eventi pericolosi, che ora come ora sarebbero classificabili come weakly_non_stealthy
+
+        weak=[]
+        #
+        for r in g1:
+            if(not check_if_safe(g, r, e_ins, R_p-set(g1))):
+                #print("stato", r, "NON FUGGE!")
+                weak.append(r)
+
+        #print("Weak interno:", weak)
+        R_out=R_p - set(weak)
+
+        return R_out, set(g1)
+
+    forbidden_states=compute_forbidden(g)
+    R_in =  g.states-set(forbidden_states)
+    R_out=set()
+    #print("Iterazione", 1)
+    R_out, R_preempt = compute_g2(g, R_in, e_obs, e_era, e_ins)
+
+    while R_out != R_in:
+        R_in = R_out
+        R_out, R_preempt = compute_g2(g, R_in, e_obs, e_era, e_ins)
+    
+    delta={}
+    for (s,e) , step in g.delta.items():
+        if s in R_out-R_preempt and step in R_out:
+            delta[(s,e)]=g.delta[(s,e)]
+        elif s in R_preempt and step in R_out:
+            if e[len(e)-1]=="+":
+                delta[(s,e)]=g.delta[(s,e)]
+                print("Inserting", s, e , g.delta[(s,e)])
+
+    
+    R_out=Reach(delta, g.initial, g.alphabet, DFA=True)
+    R_preempt=set(R_preempt) & set(R_out)
+    delta = {
+        (s,e): t
+        for (s,e), t in delta.items()
+        if s in R_out and t in R_out
+    }
+    
+    
+    trimmed=DFA(
+        states=fz(R_out),
+        alphabet=g.alphabet,
+        initial=g.initial,
+        delta=delta
+    )
+
+    return trimmed, R_preempt
+
+
+def Reach(delta, s, E, DFA=True):
+    def step(s_curr, e):
+        out = delta.get((s_curr, e), None)
+        if out is None:
+            return set()
+        if not DFA:
+            # NFA: deve essere già un set
+            return out
+        else:
+            # DFA: singolo stato, lo trasformiamo in set per uniformità
+            return {out}
+
+    fifo = deque([s])
+    reached = set()
+
+    while fifo:
+        curr = fifo.popleft()
+        if curr in reached:
+            continue
+        reached.add(curr)
+
+        for e in E:
+            for nxt in step(curr, e):
+                if nxt not in reached:
+                    fifo.append(nxt)
+
+    return reached
+
 # End of LibACCPS.py -----------------------------------------------------------
