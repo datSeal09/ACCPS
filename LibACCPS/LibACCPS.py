@@ -578,7 +578,7 @@ def mask(   g: DFA,
     g_masked=NFA(
         states=g.states,
         alphabet=fz(e_obs | {"eps"}),
-        initial=g.initial,
+        initial=fz([g.initial]),
         delta=delta_new,
         finals=g.finals
     )
@@ -705,7 +705,7 @@ def compute_forbidden(g:DFA):
 
 def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
     
-    def vedi_se_fugge2(g:DFA, s: State, e_ins, R_p):
+    def check_if_safe(g:DFA, s: State, e_ins, R_p):
         fifo = [s]
         e_plus = set([e + "+" for e in e_ins])
         alr_checked = set()
@@ -743,40 +743,42 @@ def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
         weak=[]
         #
         for r in g1:
-            if(not vedi_se_fugge2(g, r, e_ins, R_p-set(g1))):
+            if(not check_if_safe(g, r, e_ins, R_p-set(g1))):
                 #print("stato", r, "NON FUGGE!")
                 weak.append(r)
 
         #print("Weak interno:", weak)
         R_out=R_p - set(weak)
 
-        return R_out, g1
+        return R_out, set(g1)
 
     forbidden_states=compute_forbidden(g)
     R_in =  g.states-set(forbidden_states)
     R_out=set()
     #print("Iterazione", 1)
     R_out, R_preempt = compute_g2(g, R_in, e_obs, e_era, e_ins)
-    i = 2
 
     while R_out != R_in:
-        #print("Iterazione", i)
         R_in = R_out
         R_out, R_preempt = compute_g2(g, R_in, e_obs, e_era, e_ins)
-        i += 1
     
     delta={}
     for (s,e) , step in g.delta.items():
-        if s in R_out and step in R_out:
+        if s in R_out-R_preempt and step in R_out:
             delta[(s,e)]=g.delta[(s,e)]
+        elif s in R_preempt and step in R_out:
+            if e[len(e)-1]=="+":
+                delta[(s,e)]=g.delta[(s,e)]
+                print("Inserting", s, e , g.delta[(s,e)])
+
     
     R_out=Reach(delta, g.initial, g.alphabet, DFA=True)
     R_preempt=set(R_preempt) & set(R_out)
-
-    delta={}
-    for (s,e) , step in g.delta.items():
-        if s in R_out and step in R_out:
-            delta[(s,e)]=g.delta[(s,e)]
+    delta = {
+        (s,e): t
+        for (s,e), t in delta.items()
+        if s in R_out and t in R_out
+    }
     
     
     trimmed=DFA(
