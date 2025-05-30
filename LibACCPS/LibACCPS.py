@@ -460,6 +460,7 @@ def draw_dfa_graphviz(
     filename: str = "dfa",
     view: bool = True,
     state_colors: Dict[str, Set[State]] | None = None,
+    inline: bool = False,
 ) -> None:
     
     """Render a DFA to a PDF using Graphviz."""
@@ -499,7 +500,12 @@ def draw_dfa_graphviz(
     for (src, dst), evs in transitions.items():
         dot.edge(src, dst, label=", ".join(sorted(evs)))
 
-    dot.render(filename, view=view, cleanup=True)
+    if inline:
+        # in Colab/Jupyter basta tornare il Digraph e verrà renderizzato
+        return dot
+    else:
+        dot.render(filename, view=view, cleanup=True)
+        return None
 
 
 def draw_nfa_graphviz(
@@ -507,6 +513,7 @@ def draw_nfa_graphviz(
     filename: str = "nfa",
     view: bool = True,
     state_colors: Dict[str, Set[State]] | None = None,
+    inline: bool = False,
 ) -> None:
     """Render an NFA to a PDF with Graphviz.
 
@@ -548,7 +555,12 @@ def draw_nfa_graphviz(
                 raise ValueError(f"delta ({src!r}, {ev!r}) → '{dst}' non è in nfa.states")
             dot.edge(label(src), label(dst), label=str(ev))
 
-    dot.render(filename, view=view, cleanup=True)
+    if inline:
+        # in Colab/Jupyter basta tornare il Digraph e verrà renderizzato
+        return dot
+    else:
+        dot.render(filename, view=view, cleanup=True)
+        return None
 
 
 
