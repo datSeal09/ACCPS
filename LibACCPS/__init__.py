@@ -26,8 +26,8 @@ from .LibACCPS import (
 
     # Utility per generatori e costruzioni
     gn_creator,
-    compute_forbidden,
-    trim_joint_observer_v2,
+    compute_NS,
+    trim_joint_estimator,
 
     # Analisi di insiemi e percorsi
     # find_weakly_forbidden,
@@ -62,8 +62,8 @@ __all__ = [
 
     # Utility automi
     "gn_creator",
-    "compute_forbidden",
-    "trim_joint_observer_v2",
+    "compute_NS",
+    "trim_joint_estimator",
 
     # Analisi insiemi
     "find_weakly_forbidden",
