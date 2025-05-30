@@ -460,7 +460,6 @@ def draw_dfa_graphviz(
     filename: str = "dfa",
     view: bool = True,
     state_colors: Dict[str, Set[State]] | None = None,
-    inline: bool = False,
 ) -> None:
     
     """Render a DFA to a PDF using Graphviz."""
@@ -500,11 +499,7 @@ def draw_dfa_graphviz(
     for (src, dst), evs in transitions.items():
         dot.edge(src, dst, label=", ".join(sorted(evs)))
 
-    if inline:
-        return dot
-    else:
-        dot.render(filename, view=view, cleanup=True)
-        return None
+    dot.render(filename, view=view, cleanup=True)
 
 
 def draw_nfa_graphviz(
@@ -512,7 +507,6 @@ def draw_nfa_graphviz(
     filename: str = "nfa",
     view: bool = True,
     state_colors: Dict[str, Set[State]] | None = None,
-    inline: bool = False,
 ) -> None:
     """Render an NFA to a PDF with Graphviz.
 
@@ -554,11 +548,7 @@ def draw_nfa_graphviz(
                 raise ValueError(f"delta ({src!r}, {ev!r}) → '{dst}' non è in nfa.states")
             dot.edge(label(src), label(dst), label=str(ev))
 
-    if inline:
-        return dot
-    else:
-        dot.render(filename, view=view, cleanup=True)
-        return None
+    dot.render(filename, view=view, cleanup=True)
 
 
 
@@ -658,7 +648,7 @@ def gn_creator(n, ea=[], ep=[]):
 
 def create_operator_observer(g: DFA, E_ins:frozenset[Event], E_era:frozenset[Event]):
     E_plus=[]
-    empty_state=fz(["empty"])
+    empty_state="empty"
     delta=g.delta.copy()
     states=g.states.copy()
     states=set(states)
@@ -704,16 +694,23 @@ def create_operator_observer(g: DFA, E_ins:frozenset[Event], E_era:frozenset[Eve
     
     return obs_att
 
-def compute_forbidden(g:DFA):
+def compute_NS(g: DFA):
+    R_ns = []
+    empty_state = "empty"
 
-    forbidden_states=[]
-    empty_state=fz(["empty"])
+    def contains_empty(x):
+        """Check if 'empty' is in a nested structure."""
+        if isinstance(x, tuple):
+            return any(contains_empty(e) for e in x)
+        return x == empty_state
+
     for s in g.states:
-        if empty_state in s:
-            forbidden_states.append(s)
-    return forbidden_states
+        if contains_empty(s):
+            R_ns.append(s)
 
-def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
+    return R_ns
+
+def trim_joint_estimator(g:DFA, e_obs, e_era, e_ins):
     
     def check_if_safe(g:DFA, s: State, e_ins, R_p):
         fifo = [s]
@@ -741,31 +738,24 @@ def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
 
         g1 = []
 
-        #R_p devono essere gli insiemi stealth 
         for r in R_p:
             for e in e_obs:
                 if (g.step(r, e) in R_m_Rp) and (g.step(r, e + "-") not in R_p):
                     if r not in g1:
-                        #print("stato", r,"finisce in g1")
                         g1.append(r)
-        #g1 ora contiene gli insiemi con eventi pericolosi, che ora come ora sarebbero classificabili come weakly_non_stealthy
 
         weak=[]
         #
         for r in g1:
             if(not check_if_safe(g, r, e_ins, R_p-set(g1))):
-                #print("stato", r, "NON FUGGE!")
                 weak.append(r)
 
-        #print("Weak interno:", weak)
         R_out=R_p - set(weak)
-
         return R_out, set(g1)
 
-    forbidden_states=compute_forbidden(g)
-    R_in =  g.states-set(forbidden_states)
+    R_ns=compute_NS(g)
+    R_in =  g.states-set(R_ns)
     R_out=set()
-    #print("Iterazione", 1)
     R_out, R_preempt = compute_g2(g, R_in, e_obs, e_era, e_ins)
 
     while R_out != R_in:
@@ -779,7 +769,6 @@ def trim_joint_observer_v2(g:DFA, e_obs, e_era, e_ins):
         elif s in R_preempt and step in R_out:
             if e[len(e)-1]=="+":
                 delta[(s,e)]=g.delta[(s,e)]
-                print("Inserting", s, e , g.delta[(s,e)])
 
     
     R_out=Reach(delta, g.initial, g.alphabet, DFA=True)
