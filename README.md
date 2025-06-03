@@ -6,6 +6,11 @@
 
 The library is built with a focus on clear API design and practical application in academic research and system analysis, particularly for systems requiring formal verification and control.
 
+Most of the alghorithms have been inspired by these 2 works:
+* \[1] Q. Zhang, C. Seatzu, Z. W. Li, and A. Giua. Joint state estimation under attack of discrete event systems. *IEEE Access*, 9:168068–168079, 2021.
+* \[2] Q. Zhang, C. Seatzu, Z. W. Li, and A. Giua. Selection of a stealthy and harmful attack function in discrete event systems. *Scientific Reports*, 12, 2022.
+
+
 ## Core Concepts
 
 LibACCPS allows you to formally define and manipulate automata:
