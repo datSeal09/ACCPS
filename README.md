@@ -41,7 +41,17 @@ LibACCPS allows you to formally define and manipulate automata:
 
 ## Installation
 
-You can install LibACCPS directly from PyPI:
+You can install LibACCPS downloading the library:
 
 ```bash
-pip install LibACCPS
+wget https://raw.githubusercontent.com/datSeal09/ACCPS/main/dist/libaccps-<version>.tar.gz -O libaccps-<version>.tar.gz
+```
+and installing it using pip
+```bash
+pip install libaccps-<version>.tar.gz
+```
+For example:
+```bash
+wget https://raw.githubusercontent.com/datSeal09/ACCPS/main/dist/libaccps-1.0.0.tar.gz -O libaccps-1.0.0.tar.gz
+pip install libaccps-1.0.0.tar.gz
+```
