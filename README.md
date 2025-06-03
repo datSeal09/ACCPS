@@ -40,8 +40,9 @@ LibACCPS allows you to formally define and manipulate automata:
 * **Typed and Validated:** Uses Python type hints and performs consistency checks during automaton construction.
 
 ## Installation
+First of all install graphviz in your local machine from https://graphviz.org/download/ (if you run it in colab this step is unnecessary)
 
-You can install LibACCPS downloading the library:
+Than you are ready to download the library!
 
 ```bash
 wget https://raw.githubusercontent.com/datSeal09/ACCPS/main/dist/libaccps-<version>.tar.gz -O libaccps-<version>.tar.gz
