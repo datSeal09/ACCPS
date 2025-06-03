@@ -1,7 +1,5 @@
 # LibACCPS
 
-[![Python Version](https://img.shields.io/pypi/pyversions/LibACCPS.svg?style=flat-square)](https://pypi.org/project/LibACCPS/)
-[![PyPI version](https://img.shields.io/pypi/v/LibACCPS.svg?style=flat-square)](https://pypi.org/project/LibACCPS/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 **LibACCPS** is a Python library for modeling, analyzing, and visualizing Discrete-Event Systems (DES). It provides robust tools for working with Deterministic Finite Automata (DFA) and Non-Deterministic Finite Automata (NFA), including support for observer construction, concurrent composition, supervisor synthesis utilities, and attack modeling in the context of cybersecurity for automated systems.
